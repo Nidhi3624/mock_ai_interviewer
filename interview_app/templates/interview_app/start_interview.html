@@ -1,0 +1,21 @@
+{% extends "interview_app/base.html" %}
+
+{% block content %}
+<h1>Start a New Interview</h1>
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="job_position">Job Position:</label>
+        <input type="text" name="job_position" id="job_position" required class="form-control">
+    </div>
+    <div class="form-group">
+        <label for="difficulty_level">Difficulty Level:</label>
+        <select name="difficulty_level" id="difficulty_level" required class="form-control">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Start Interview</button>
+</form>
+{% endblock %}

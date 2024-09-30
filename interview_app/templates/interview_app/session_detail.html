@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Interview Session: {{ session.job_position }}</h1>
+<p>Date: {{ session.date_created|date:"F d, Y" }}</p>
+<p>Difficulty: {{ session.difficulty_level }}</p>
+
+<h2>Questions and Answers</h2>
+{% for question in questions %}
+    <div class="question-answer">
+        <h3>Question {{ forloop.counter }}:</h3>
+        <p>{{ question.text }}</p>
+        
+        {% if question.answer %}
+            <h4>Your Answer:</h4>
+            <p>Transcription: {{ question.answer.transcription }}</p>
+            <p>Emotion Analysis: {{ question.answer.emotion_analysis.primary }} (Confidence: {{ question.answer.emotion_analysis.confidence }})</p>
+            
+            <h4>Facial Expressions:</h4>
+            <ul>
+            {% for analysis in question.answer.facial_analyses.all %}
+                <li>{{ analysis.timestamp|floatformat:2 }}s: {{ analysis.primary_emotion }}</li>
+            {% endfor %}
+            </ul>
+            
+            <p>Correctness Score: {{ question.answer.correctness_score|floatformat:2 }}</p>
+            <p>Feedback: {{ question.answer.feedback }}</p>
+        {% else %}
+            <p>No answer recorded for this question.</p>
+        {% endif %}
+    </div>
+{% endfor %}
+
+<h2>Overall Score: {{ session.overall_score|floatformat:2 }}</h2>
+{% endblock %}

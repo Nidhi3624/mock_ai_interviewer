@@ -1,0 +1,132 @@
+{% extends "interview_app/base.html" %}
+
+{% block content %}
+<h1>Interview for {{ session.job_position }}</h1>
+
+<div id="question-container"></div>
+    {% for question in questions %}
+    <div class="question" id="question-{{ question.id }}" style="display: {% if forloop.first %}block{% else %}none{% endif %};">
+        <h3>Question {{ forloop.counter }}:</h3>
+        <p>{{ question.text }}</p>
+        <button onclick="startRecording({{ question.id }})" class="btn btn-primary">Start Recording</button>
+        <button onclick="stopRecording({{ question.id }})" class="btn btn-danger" style="display: none;">Stop Recording</button>
+        <div id="timer-{{ question.id }}"></div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="video-container">
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+</div>
+
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let currentQuestionId;
+    let timerInterval;
+    let startTime;
+
+    function startRecording(questionId) {
+        currentQuestionId = questionId;
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+
+                document.querySelector(`#question-${questionId} button:first-child`).style.display = 'none';
+                document.querySelector(`#question-${questionId} button:last-child`).style.display = 'inline-block';
+
+                startTimer(questionId);
+                startVideoCapture();
+            });
+    }
+
+    function stopRecording(questionId) {
+        mediaRecorder.stop();
+        mediaRecorder.addEventListener("stop", () => {
+            const audioBlob = new Blob(audioChunks);
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "answer.wav");
+
+            fetch(`/submit-answer/${questionId}/`, {
+                method: "POST",
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showNextQuestion(questionId);
+                    }
+                });
+
+            audioChunks = [];
+        });
+
+        clearInterval(timerInterval);
+        stopVideoCapture();
+    }
+
+    function startTimer(questionId) {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            document.querySelector(`#timer-${questionId}`).textContent = `Time: ${elapsedTime}s`;
+        }, 1000);
+    }
+
+    function showNextQuestion(currentId) {
+        const currentQuestion = document.querySelector(`#question-${currentId}`);
+        const nextQuestion = currentQuestion.nextElementSibling;
+
+        if (nextQuestion) {
+            currentQuestion.style.display = 'none';
+            nextQuestion.style.display = 'block';
+        } else {
+            // Interview finished
+            window.location.href = "{% url 'dashboard' %}";
+        }
+    }
+
+    function startVideoCapture() {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                video.play();
+
+                // Capture frame every 5 seconds
+                setInterval(captureFrame, 5000);
+            });
+    }
+
+    function stopVideoCapture() {
+        const video = document.getElementById('video');
+        const stream = video.srcObject;
+        const tracks = stream.getTracks();
+
+        tracks.forEach(track => track.stop());
+    }
+
+    function captureFrame() {
+        const canvas = document.getElementById('canvas');
+        const video = document.getElementById('video');
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(blob => {
+            const formData = new FormData();
+            formData.append('image', blob, 'frame.jpg');
+            formData.append('timestamp', (Date.now() - startTime) / 1000);
+
+            fetch(`/submit-facial-analysis/${currentQuestionId}/`, {
+                method: 'POST',
+                body: formData
+            });
+        }, 'image/jpeg');
+    }
+</script>
+{% endblock %}

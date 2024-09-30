@@ -1,0 +1,21 @@
+{% extends "interview_app/base.html" %}
+
+{% block content %}
+<h1>Interview Dashboard</h1>
+<a href="{% url 'start_interview' %}" class="btn btn-primary">Start New Interview</a>
+
+<h2>Your Interview Sessions</h2>
+{% if sessions %}
+    <ul>
+    {% for session in sessions %}
+        <li>
+            <a href="{% url 'session_detail' session.id %}">
+                {{ session.job_position }} - {{ session.date_created|date:"F d, Y" }}
+            </a>
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>You haven't completed any interviews yet.</p>
+{% endif %}
+{% endblock %}
